@@ -57,7 +57,7 @@ Open your terminal and execute:
 
 ```bash
 # Clone the repository (Replace with actual repo link if pushing to GitHub)
-# git clone https://github.com/your-repo/damsql.git
+# git clone https://github.com/kishwordulal1234/god-sqli.git
 
 # Enter the directory
 cd damsql
@@ -81,7 +81,7 @@ pkg update && pkg upgrade -y
 pkg install git curl gawk sed ncurses-utils wget diffutils -y
 
 # Clone the repository
-# git clone https://github.com/your-repo/damsql.git
+# git clone https://github.com/kishwordulal1234/god-sqli.git
 
 # Navigate into the tool directory
 cd damsql
