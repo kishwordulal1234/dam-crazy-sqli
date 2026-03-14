@@ -427,7 +427,9 @@ def main():
     except Exception:
         domain = base_url
     url_hash = hashlib.md5(domain.encode()).hexdigest()
-    cache_file = f"/tmp/.plain_cache_{url_hash}.json"
+    # Use $TMPDIR (writable on Termux), fallback to script dir, then /tmp
+    _tmpdir = os.environ.get("TMPDIR") or os.environ.get("TMP") or os.path.dirname(os.path.abspath(__file__))
+    cache_file = os.path.join(_tmpdir, f".plain_cache_{url_hash}.json")
     cache_data = {}
     if os.path.exists(cache_file):
         try:
