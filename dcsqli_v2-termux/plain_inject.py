@@ -97,31 +97,81 @@ def _strip_tags(html):
         s.feed(html)
         return s.get_text()
     except Exception:
-        return re.sub(r'<[^>]+>', ' ', html)
+        # Fallback: aggressive regex strip
+        text = re.sub(r'<script[^>]*>.*?</script>', ' ', html, flags=re.S | re.I)
+        text = re.sub(r'<style[^>]*>.*?</style>', ' ', text, flags=re.S | re.I)
+        text = re.sub(r'<[^>]+>', ' ', text)
+        text = re.sub(r'\s+', ' ', text)
+        return text.strip()
 
 
 # ── Networking ───────────────────────────────────────────────────────
+import subprocess
+
+def _fetch_curl(url):
+    """Fetch URL using curl subprocess — most reliable on Termux."""
+    try:
+        result = subprocess.run(
+            ["curl", "-A", UA, "--max-time", str(TIMEOUT),
+             "-sL", "-k", url],
+            capture_output=True, timeout=TIMEOUT + 5
+        )
+        data = result.stdout
+        try:
+            return data.decode("utf-8")
+        except UnicodeDecodeError:
+            return data.decode("latin-1")
+    except Exception as e:
+        log(f"  [!] curl error: {e}")
+        return ""
+
+
+def _fetch_urllib(url):
+    """Fetch URL using stdlib urllib — fallback if curl missing."""
+    try:
+        req = Request(url, headers={"User-Agent": UA})
+        with urlopen(req, timeout=TIMEOUT, context=_ssl_ctx) as resp:
+            data = resp.read()
+            try:
+                return data.decode("utf-8")
+            except UnicodeDecodeError:
+                return data.decode("latin-1")
+    except (URLError, HTTPError, OSError, Exception) as e:
+        log(f"  [!] urllib error: {e}")
+        return ""
+
+
+def _fetch_requests(url):
+    """Fetch URL using requests library — best quality."""
+    try:
+        resp = _session.get(url, timeout=TIMEOUT, allow_redirects=True)
+        resp.encoding = resp.apparent_encoding if resp.encoding == 'ISO-8859-1' else resp.encoding
+        return resp.text
+    except Exception as e:
+        log(f"  [!] requests error: {e}")
+        return ""
+
+
+# Pick best fetcher based on environment
+_HAS_CURL = False
+try:
+    subprocess.run(["curl", "--version"], capture_output=True, timeout=5)
+    _HAS_CURL = True
+except Exception:
+    pass
+
+
 def fetch(url):
-    """Fetch URL text. Uses requests if available, else stdlib."""
+    """Fetch URL text. Auto-selects best method for the environment."""
     if _USE_REQUESTS:
-        try:
-            resp = _session.get(url, timeout=TIMEOUT, allow_redirects=True)
-            resp.encoding = resp.apparent_encoding if resp.encoding == 'ISO-8859-1' else resp.encoding
-            return resp.text
-        except Exception:
-            return ""
+        return _fetch_requests(url)
+    elif IS_TERMUX and _HAS_CURL:
+        # On Termux, curl handles SSL/redirects better than Python stdlib
+        return _fetch_curl(url)
+    elif _HAS_CURL:
+        return _fetch_curl(url)
     else:
-        try:
-            req = Request(url, headers={"User-Agent": UA})
-            with urlopen(req, timeout=TIMEOUT, context=_ssl_ctx) as resp:
-                data = resp.read()
-                # Try utf-8 first, then latin-1 as safe fallback
-                try:
-                    return data.decode("utf-8")
-                except UnicodeDecodeError:
-                    return data.decode("latin-1")
-        except (URLError, HTTPError, OSError, Exception):
-            return ""
+        return _fetch_urllib(url)
 
 
 def get_clean_text(html):
