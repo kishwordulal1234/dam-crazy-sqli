@@ -27,9 +27,10 @@
 
 - [Overview](#-overview)
 - [Version History & Changelog](#-version-history--changelog)
-  - [v1 — Original Bash Engine](#v1--original-bash-engine)
+  - [Original — Pristine Upstream Source](#original--pristine-upstream-source)
+  - [v1 — Preserved Baseline](#v1--preserved-baseline)
   - [v2 — Reborn Edition (Bash + Python3)](#v2--reborn-edition-bash--python3)
-  - [Side-by-Side Comparison](#-side-by-side-comparison-v1-vs-v2)
+  - [Full Three-Way Comparison](#-full-three-way-comparison)
 - [Features](#-features)
 - [Requirements](#-requirements)
 - [Installation Guide](#-installation-guide)
@@ -52,23 +53,45 @@ The toolkit supports everything from single-site union injection to mass dorking
 
 ## 📋 Version History & Changelog
 
-### `v1` — Original Bash Engine
+This repo contains **3 distinct script versions** across its files:
+
+| File | Role |
+|---|---|
+| `psqli_original.sh` | 📌 Pristine upstream source by Kedjaw3n — never modified, reference only |
+| `dcsqli_v1/psqli.sh` | 📁 Byte-for-byte copy of the original — organised v1 baseline for diffing |
+| `dcsqli_v2/psqliv2.sh` + `dcsqli_v2/plain_inject.py` | ✅ Bug-fixed, Python3-enhanced production version — **run this** |
+
+---
+
+### `Original` — Pristine Upstream Source
+
+**File:** `psqli_original.sh` *(root of repository)*
+
+This is the **untouched, unmodified upstream source** — the exact script as authored and published by **Kedjaw3n** (created 15 July 2019, released 17 January 2020, last updated 21 April 2020). It is preserved in the repository root as the canonical reference point so anyone can diff any derivative version against the true original at any time.
+
+**Key characteristics of the original:**
+- Pure Bash — zero external scripting language dependencies beyond standard Unix tools
+- Boot screen credits: *"PSQL-I v.3 moded by unknone hart — FINAL"* with a dedicated `unknone_loader()` ASCII animation boot sequence
+- 10+ whitespace WAF bypass styles hardcoded as variables (`w1`–`w10`): comment injection, buffer-of-A padding, URL-double-encoding, `%23%0a`, null-byte variants, etc.
+- 5 DIOS (Dump In One Shot) query variants covering basic WAF, Madblood WAF, Zen WAF, Madblood no-WAF, and a dynamic `${by}`-substitution method
+- SQLi login bypass payload library: `' or 1=1 limit 1-- -+`, `'=''or'`, `admin`, `'=''or'@gmail.com`
+- **4,180 lines** of pure Bash
+
+**Known bugs present in the original (unfixed):**
+- `.angka` file race condition — `cat .angka | sed ... > .angka` reads and writes the same file simultaneously, corrupting it to 0 bytes and silently killing the extraction mid-run
+- `sed` `unterminated 's'` crash — unescaped special characters in multi-column results break the `sed` substitution pattern
+- Empty `curl` arguments — constructed downstream of the broken `sed`, producing useless `curl: no URL specified` errors with no graceful skip
+- Silent main-menu drops — all of the above cause the script to fall back to the main menu with no error message, making it appear the injection simply found nothing
+
+---
+
+### `v1` — Preserved Baseline
 
 **File:** `dcsqli_v1/psqli.sh`
 
-The v1 engine is the foundational Bash script authored by **Kedjaw3n** (originally released 17 January 2020, last updated 21 April 2020). It is a pure Bash implementation that handles SQL injection end-to-end using `curl`, `sed`, `awk`, and `grep`.
+A **byte-for-byte identical copy** of `psqli_original.sh`, placed inside the `dcsqli_v1/` folder for organised versioning. It carries all the same code, bugs, and features as the original. Its purpose is to serve as the **organised v1 baseline** within the repo structure, making it easy to `diff dcsqli_v1/psqli.sh dcsqli_v2/psqliv2.sh` and see every change made in v2 cleanly.
 
-**What v1 does well:**
-- Solid WAF bypass payloads — 10+ whitespace bypass styles (URL-encoded comment injection, `%23%0a`, buffer-of-A techniques, etc.)
-- Full DIOS (Dump In One Shot) method with 5 query variants (basic WAF, Madblood WAF, Zen WAF, Madblood no-WAF, dynamic `${by}` method)
-- 16-module menu system covering dorking, mass exploitation, hash tools, and admin finders
-- SQLi login bypass payload library (`' or 1=1 limit 1-- -+`, `'=''or'`, etc.)
-
-**Known issues in v1 (inherited from the original PSQLI source):**
-- `.angka` file race condition: `cat .angka | sed ... > .angka` writes and reads the same file simultaneously, corrupting it to 0 bytes mid-extraction
-- Silent menu exits when column extraction reaches the DIOS phase due to the above bug
-- `sed` `unterminated 's'` errors when multi-column vulnerable sites are processed, caused by unescaped special characters in `sed` pattern variables
-- Empty `curl` arguments constructed from broken `sed` output, causing noisy `curl` errors with no recovery logic
+> `diff psqli_original.sh dcsqli_v1/psqli.sh` → **0 differences.** They are identical.
 
 ---
 
@@ -76,37 +99,42 @@ The v1 engine is the foundational Bash script authored by **Kedjaw3n** (original
 
 **Files:** `dcsqli_v2/psqliv2.sh` + `dcsqli_v2/plain_inject.py`
 
-v2 is a complete rework of the extraction pipeline. The core Bash shell loop is retained and improved, and a brand-new Python3 module (`plain_inject.py`) is introduced as a dedicated **plain/clean injection engine** — no WAF bypass, pure `UNION SELECT`, designed for targets that have no firewall in place.
+v2 is a reworked evolution of the original. The Bash shell is retained and stabilised with all four original bug classes fixed, the boot screen is cleaned up (credits simplified to `PSQL-I v.3 MOD FINAL`), and a brand-new Python3 companion module (`plain_inject.py`) is introduced as a dedicated **plain injection engine** — pure `UNION SELECT` with no WAF bypass overhead, designed for unprotected targets and built with multi-threaded enumeration.
 
-**Key improvements in v2:**
+**Every fix applied in v2:**
 
-- All `.angka` file handling now uses an atomic `.tmp` write-then-rename pattern to eliminate the race condition
-- `sed` pattern inputs are sanitized with `head -1` and strict integer casting before being passed to `sed`, eliminating the `unterminated 's'` crash class
-- `curl` invocations are guarded with empty-argument checks; the script skips gracefully instead of erroring out
-- Menu validation gates added across all sub-menus so the script never silently drops back to the main menu
-- **New `plain_inject.py` module** (Python3): autonomous ORDER BY column counter, reflected column scanner via `BeautifulSoup`-cleaned text, concurrent multi-threaded table and column enumeration with `ThreadPoolExecutor` (10 workers), hex-encoded DB name injection to avoid quoting issues, and structured stdout output parseable by the Bash wrapper
-- Main menu expanded to 9 options (v1 had 8 active options) — option 5/6 now routes to the Python3 plain inject runner
+- `.angka` race condition → replaced with atomic `.angka.tmp` write-then-rename (`mv .angka.tmp .angka`), so no file is ever read and written simultaneously
+- `sed` unterminated 's' crash → `sed` pattern inputs are now sanitised through `head -1` and strict integer casting before being passed, eliminating the entire crash class
+- Empty `curl` arguments → all `curl` invocations are guarded with non-empty argument checks; the script skips gracefully with an informative `echo` instead of erroring out
+- Silent menu drops → menu validation gates added throughout all sub-menus so the script prints a reason and stays in the right context instead of silently returning to root
+
+**New capabilities added in v2:**
+
+- **`plain_inject.py`** — a self-contained Python3 injection module with: autonomous `ORDER BY N` column counter, reflected column discovery via `BeautifulSoup`-cleaned page text (no false positives from HTML tags), `database()`/`version()`/`user()` extraction in a single request, 10-worker concurrent `ThreadPoolExecutor` table enumeration, hex-encoded DB name to bypass quoting, structured `KEY=VALUE` stdout for Bash wrapper parsing
+- Main menu expanded from 8 to 9 active options — option 5/6 now routes to the Python3 plain inject runner with quote-style selection
+- **3,895 lines** (285 lines leaner than original due to cleanup of trailing whitespace and dead code)
 
 ---
 
-### 📊 Side-by-Side Comparison: v1 vs v2
+### 📊 Full Three-Way Comparison
 
-| Category | v1 (Original Bash) | v2 (Reborn — Bash + Python3) |
-|---|---|---|
-| **Engine language** | Pure Bash | Bash + Python3 |
-| **Column count detection** | ORDER BY in Bash loop | ORDER BY in Python3 with error-keyword detection |
-| **Reflected column scan** | Bash `curl` + `grep` | Python3 with BeautifulSoup HTML stripping |
-| **DIOS extraction** | 5 variants (may crash on buggy `.angka`) | 5 variants + fixed `.tmp` atomic write |
-| **Plain injection mode** | ❌ Not available | ✅ `plain_inject.py` — clean UNION SELECT, no WAF bypass |
-| **Table enumeration** | Sequential Bash loop | Concurrent (10 threads via `ThreadPoolExecutor`) |
-| **`.angka` race condition** | ❌ Present — data loss | ✅ Fixed with `.angka.tmp` pattern |
-| **`sed` crash on multi-col** | ❌ Present — script exits | ✅ Fixed with `head -1` + integer guard |
-| **`curl` empty-arg errors** | ❌ Noisy errors, no recovery | ✅ Guards skip gracefully |
-| **Menu exit on crash** | ❌ Silent drop to main menu | ✅ Informative echo + validated returns |
-| **HTML-contaminated output** | Sometimes — raw `grep` | Cleaned via `BeautifulSoup` + `lxml` parser |
-| **Boot screen** | Standard console | Custom ASCII animation |
-| **Menu options** | 8 | 9 |
-| **Dependencies** | `curl grep gawk sed diff awk` | Above + `python3 requests bs4 lxml` |
+| Category | Original (`psqli_original.sh`) | v1 (`dcsqli_v1/psqli.sh`) | v2 (`dcsqli_v2/psqliv2.sh` + `plain_inject.py`) |
+|---|---|---|---|
+| **Purpose** | Pristine upstream reference | Organised v1 baseline | Bug-fixed production version |
+| **Identical to Original?** | — | ✅ Yes, byte-for-byte | ❌ No — heavily modified |
+| **Language** | Pure Bash | Pure Bash | Bash + Python3 |
+| **Lines of code** | 4,180 | 4,180 | 3,895 + 415 (py) |
+| **Boot screen** | "moded by unknone hart FINAL" + `unknone_loader()` | Same as original | "MOD FINAL" — simplified |
+| **`.angka` race condition** | ❌ Bug present | ❌ Bug present | ✅ Fixed — `.tmp` pattern |
+| **`sed` unterminated 's'** | ❌ Bug present | ❌ Bug present | ✅ Fixed — `head -1` guard |
+| **Empty `curl` args** | ❌ Bug present | ❌ Bug present | ✅ Fixed — skip guards |
+| **Silent menu exits** | ❌ Bug present | ❌ Bug present | ✅ Fixed — validation gates |
+| **Plain inject mode** | ❌ None | ❌ None | ✅ `plain_inject.py` |
+| **Table enumeration** | Sequential Bash loop | Sequential Bash loop | 10-thread concurrent Python3 |
+| **HTML-clean extraction** | Raw `grep` (can grab tags) | Raw `grep` (can grab tags) | `BeautifulSoup` + `lxml` |
+| **Menu options** | 8 | 8 | 9 |
+| **Python3 required** | ❌ No | ❌ No | ✅ Yes (for plain inject) |
+| **Recommended for use** | 📚 Reference only | 📚 Diff baseline only | ✅ **Run this one** |
 
 ---
 
@@ -506,4 +534,3 @@ When the user selects Plain Mode, `psqliv2.sh` spawns `plain_inject.py` as a sub
 **Dam Crazy SQLi** — For the ethical hacker in you.
 
 </div>
-
