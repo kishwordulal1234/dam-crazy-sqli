@@ -57,16 +57,18 @@ Open your terminal and execute:
 
 ```bash
 # Clone the repository (Replace with actual repo link if pushing to GitHub)
-# git clone https://github.com/kishwordulal1234/god-sqli.git
+# git clone https://github.com/kishwordulal1234/dam-crazy-sqli.git
 
 # Enter the directory
-cd damsql
+cd dam-crazy-sqli/dcsqli_v2
+
+# close the version u like
 
 # Make the script executable
-chmod +x ./psqli.sh
+chmod +x ./psqliv2.sh
 
 # Run the hijacker
-bash ./psqli.sh
+bash ./psqliv2.sh
 ```
 
 ### 📱 Android (Termux)
@@ -81,16 +83,16 @@ pkg update && pkg upgrade -y
 pkg install git curl gawk sed ncurses-utils wget diffutils -y
 
 # Clone the repository
-# git clone https://github.com/kishwordulal1234/god-sqli.git
+# git clone https://github.com/kishwordulal1234/dam-crazy-sqli.git
 
 # Navigate into the tool directory
-cd damsql
+cd dam-crazy-sqli/dcsqli_v2
 
 # Grant executable permissions
-chmod +x ./psqli.sh
+chmod +x ./psqliv2.sh
 
 # Launch the tool!
-bash ./psqli.sh
+bash ./psqliv2.sh
 ```
 
 ---
